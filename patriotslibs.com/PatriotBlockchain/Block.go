@@ -1,4 +1,4 @@
-package main
+package patriotblockchain
 
 import (
 	"crypto/sha256"
@@ -75,23 +75,3 @@ func HashBlock(block *Block) string {
 	}
 	return base64.RawStdEncoding.EncodeToString(hasher.Sum(nil))
 }
-
-// func main() {
-// 	var block *Block = &Block{
-// 		Number:   1,
-// 		Previous: "0000000000000000000000000000000000000000000",
-// 		Data:     []byte("hola"),
-// 		Nonce:    1,
-// 	}
-// 	block.Hash = HashBlock(block)
-// 	fmt.Println(block)
-// 	verification, _ := block.verifyChecksum()
-// 	for !verification {
-// 		block.Nonce++
-// 		block.Hash = HashBlock(block)
-// 		fmt.Printf("\rTrying with %d hash: %s", block.Nonce, block.Hash)
-// 		verification = ProofWork(block)
-// 	}
-// 	fmt.Println("Verification:", verification)
-
-// }

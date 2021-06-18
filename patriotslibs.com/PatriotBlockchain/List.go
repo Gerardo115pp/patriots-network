@@ -1,4 +1,4 @@
-package main
+package patriotblockchain
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ type List struct {
 	iterator_position uint
 }
 
-func (self *List) append(content Content) int {
+func (self *List) Append(content Content) int {
 	var new_node *ListNode = new(ListNode)
 	new_node.NodeContent = content
 
@@ -48,12 +48,12 @@ func (self *List) append(content Content) int {
 	return self.length
 }
 
-func (self *List) clear() {
+func (self *List) Clear() {
 	self.root = nil
 	self.length = 0
 }
 
-func (self *List) exists(content Content) Content {
+func (self *List) Exists(content Content) Content {
 	if self.root != nil {
 		var current_node *ListNode = self.root
 		for current_node != nil {
@@ -67,13 +67,13 @@ func (self *List) exists(content Content) Content {
 	return nil
 }
 
-func (self *List) filter(conditionf ConditionalFunc) *List {
+func (self *List) Filter(conditionf ConditionalFunc) *List {
 	var new_list *List = new(List)
 	if self.root != nil {
 		current_node := self.root
 		for current_node != nil {
 			if conditionf(current_node.NodeContent) {
-				new_list.append(current_node.NodeContent)
+				new_list.Append(current_node.NodeContent)
 			}
 			current_node = current_node.Next
 		}
@@ -81,7 +81,7 @@ func (self *List) filter(conditionf ConditionalFunc) *List {
 	return new_list
 }
 
-func (self *List) get(position int) Content {
+func (self *List) Get(position int) Content {
 	if position >= self.length {
 		panic(fmt.Errorf("index %d in list of length %d is out of range", position, self.length))
 	}
@@ -93,7 +93,11 @@ func (self *List) get(position int) Content {
 	return current_node.NodeContent
 }
 
-func (self *List) mapFunc(callback func(*ListNode) string) []string {
+func (self *List) IsEmpty() bool {
+	return self.root == nil
+}
+
+func (self *List) Map(callback func(*ListNode) string) []string {
 	var current_node *ListNode = self.root
 	var map_results []string
 	for current_node != nil {
@@ -103,17 +107,21 @@ func (self *List) mapFunc(callback func(*ListNode) string) []string {
 	return map_results
 }
 
-func (self *List) push(c Content) int {
+func (self *List) Push(c Content) int {
 	var new_node *ListNode = new(ListNode)
 	new_node.NodeContent = c
-	self.root.Prev = new_node
-	new_node.Next = self.root
+
+	if self.root != nil {
+		self.root.Prev = new_node
+		new_node.Next = self.root
+	}
+
 	self.root = new_node
 	self.length++
 	return self.length
 }
 
-func (self *List) pop() Content {
+func (self *List) Pop() Content {
 	if self.root != nil {
 		var current_node *ListNode = self.root
 		if self.length == 1 {
@@ -133,7 +141,7 @@ func (self *List) pop() Content {
 	return nil
 }
 
-func (self *List) remove(content Content) {
+func (self *List) Remove(content Content) {
 	var indirect **ListNode = &self.root
 	for (*indirect) != nil && !((*indirect).NodeContent.getId() == content.getId()) {
 		indirect = &((*indirect).Next)
@@ -145,7 +153,7 @@ func (self *List) remove(content Content) {
 	self.length--
 }
 
-func (self *List) searchBy(condition func(Content) bool) Content {
+func (self *List) SearchBy(condition func(Content) bool) Content {
 	for current_node := self.root; current_node != nil; current_node = current_node.Next {
 		if condition(current_node.NodeContent) {
 			return current_node.NodeContent
@@ -154,7 +162,7 @@ func (self *List) searchBy(condition func(Content) bool) Content {
 	return nil
 }
 
-func (self *List) save(file_name string) bool {
+func (self *List) Save(file_name string) bool {
 	var serialized_string string
 	var current_node *ListNode = self.root
 	for true {
@@ -170,7 +178,7 @@ func (self *List) save(file_name string) bool {
 	return ioutil.WriteFile(file_name, []byte(serialized_string), 0666) == nil
 }
 
-func (self *List) toJson() string {
+func (self *List) Json() string {
 	var json_content []string
 	for current_node := self.root; current_node != nil; current_node = current_node.Next {
 		json_content = append(json_content, string(current_node.NodeContent.toJson()))
@@ -178,7 +186,7 @@ func (self *List) toJson() string {
 	return fmt.Sprintf("[%s]", strings.Join(json_content, ","))
 }
 
-func (self *List) toString() (rstring string) {
+func (self *List) String() (rstring string) {
 	if self.root == nil {
 		return "{Empty-List}"
 	}
@@ -206,7 +214,7 @@ func (self *List) toString() (rstring string) {
 	return rstring
 }
 
-func (self *List) toSlice() []Content {
+func (self *List) Slice() []Content {
 	var list_slice []Content
 	for current_node := self.root; current_node != nil; current_node = current_node.Next {
 		list_slice = append(list_slice, current_node.NodeContent)
