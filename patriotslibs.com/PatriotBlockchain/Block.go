@@ -30,7 +30,7 @@ func (self *Block) toString() string {
 func (self *Block) toJson() []byte {
 	data, err := json.Marshal(self)
 	if err != nil {
-		logFatal(err)
+		LogFatal(err)
 	}
 	return data
 }
@@ -71,7 +71,7 @@ func HashBlock(block *Block) string {
 	hasher := sha256.New()
 	_, err := hasher.Write([]byte(block_footprint))
 	if err != nil {
-		logFatal(err)
+		LogFatal(err)
 	}
 	return base64.RawStdEncoding.EncodeToString(hasher.Sum(nil))
 }

@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 
+	patriot_blockchain "github.com/Gerardo115pp/PatriotLib/PatriotBlockchain"
 	patriot_router "github.com/Gerardo115pp/PatriotLib/PatriotRouter"
 )
 
@@ -24,7 +26,7 @@ type XZagent struct {
 
 type JD struct {
 	router   *patriot_router.Router
-	GWagents map[string]*GWagent
+	GWagents map[uint64]*GWagent
 	XZagents map[string]*XZagent
 	port     string
 	host     string
@@ -98,14 +100,22 @@ func (self *JD) handleGW(response http.ResponseWriter, request *http.Request) {
 		}
 	case http.MethodPost:
 		// register a gw agent
-		var gw_code string = request.FormValue("code")
-		var lisinting_port string = request.FormValue("port")
-		if gw_code != "" && lisinting_port != "" {
+		post_form, err := self.parseFormAsMap(request)
+		if err != nil {
+			response.WriteHeader(400)
+			response.Write(self.composeError("wrong form data"))
+			return
+		}
+		var lisenting_port string = post_form["port"]
+		if lisenting_port != "" {
 			var gw_agent *GWagent = self.composeGWagentFromRequest(request)
-			gw_agent.Lisenting_on = lisinting_port
+			gw_agent.Lisenting_on = lisenting_port
 			fmt.Printf("New GW agent with host '%s:%s'\n", gw_agent.Host, gw_agent.Lisenting_on)
-			self.GWagents[gw_code] = gw_agent
+			self.GWagents[patriot_blockchain.ShaAsInt64(fmt.Sprintf("%s:%s", request.RemoteAddr, lisenting_port))] = gw_agent
+			response.WriteHeader(200)
+			fmt.Fprintf(response, "ok")
 		} else {
+			fmt.Println("Error lisenting port was:", lisenting_port)
 			response.WriteHeader(400)
 			response.Write(self.composeError("missing code"))
 		}
@@ -133,6 +143,19 @@ func (self *JD) handleXZ(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
+func (self *JD) parseFormAsMap(request *http.Request) (map[string]string, error) {
+	var parsed_form map[string]string = make(map[string]string)
+	var err error
+	if content_type := request.Header.Get("Content-Type"); content_type == "application/json" {
+		body_data, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return make(map[string]string), err
+		}
+		err = json.Unmarshal(body_data, &parsed_form)
+	}
+	return parsed_form, err
+}
+
 func (self *JD) run() {
 	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, false), self.handleGW)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, false), self.handleXZ)
@@ -150,7 +173,7 @@ func createJD() *JD {
 	if custom_port := os.Getenv("JD_PORT"); custom_port != "" {
 		new_jd_node.port = custom_port
 	}
-	new_jd_node.GWagents = make(map[string]*GWagent)
+	new_jd_node.GWagents = make(map[uint64]*GWagent)
 	new_jd_node.XZagents = make(map[string]*XZagent)
 	new_jd_node.router = patriot_router.CreateRouter()
 	return new_jd_node
