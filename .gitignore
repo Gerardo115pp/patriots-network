@@ -15,3 +15,6 @@
 # vendor/
 /**/node_modules
 /**/peers.json
+/**/operational_data
+Services/EP/operational_data/messages.json
+Services/EP/operational_data/users.json

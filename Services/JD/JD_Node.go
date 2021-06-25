@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,6 +33,28 @@ type JD struct {
 	host     string
 }
 
+func (self *JD) broadcastGWConnection(new_gw *GWagent) {
+	gw_data, err := json.Marshal(new_gw)
+	if err != nil {
+		patriot_blockchain.LogFatal(err)
+	}
+
+	var request_body *bytes.Buffer = bytes.NewBuffer(gw_data)
+
+	var gw_count uint = 1
+	for _, gw := range self.GWagents {
+		fmt.Printf("\rBoadcasting (%d/%d)", gw_count, len(self.GWagents)-1)
+		if gw.Host == new_gw.Host && gw.Lisenting_on == new_gw.Lisenting_on {
+			continue
+		}
+
+		request_adddress := fmt.Sprintf("http://%s:%s/peers", gw.Host, gw.Lisenting_on)
+
+		http.Post(request_adddress, "application/json", request_body)
+	}
+	fmt.Println("done")
+}
+
 func (self *JD) composeGWagentFromRequest(request *http.Request) *GWagent {
 	var gw_agent *GWagent = new(GWagent)
 	gw_agent.Host, _, _ = net.SplitHostPort(request.RemoteAddr)
@@ -42,7 +65,6 @@ func (self *JD) composeGWagentFromRequest(request *http.Request) *GWagent {
 		self.port = "80"
 	}
 	return gw_agent
-
 }
 
 func (self *JD) composeJson(key string, value string) []byte {
@@ -77,6 +99,22 @@ func (self *JD) getLazyestGW() *GWagent {
 		}
 	}
 	return lazyiest
+}
+
+func (self *JD) handleAllGWs(response http.ResponseWriter, request *http.Request) {
+	var gw_agents []*GWagent
+	var gw_agents_connected []byte
+	for _, gw := range self.GWagents {
+		gw_agents = append(gw_agents, gw)
+	}
+
+	gw_agents_connected, err := json.Marshal(gw_agents)
+	if err != nil {
+		patriot_blockchain.LogFatal(err)
+	}
+	response.WriteHeader(200)
+	response.Header().Set("Content-Type", "application/json")
+	response.Write(gw_agents_connected)
 }
 
 func (self *JD) handleGW(response http.ResponseWriter, request *http.Request) {
@@ -114,6 +152,10 @@ func (self *JD) handleGW(response http.ResponseWriter, request *http.Request) {
 			self.GWagents[patriot_blockchain.ShaAsInt64(fmt.Sprintf("%s:%s", request.RemoteAddr, lisenting_port))] = gw_agent
 			response.WriteHeader(200)
 			fmt.Fprintf(response, "ok")
+			if len(self.GWagents) > 1 {
+				fmt.Println("Broadcasting gw connection")
+				self.broadcastGWConnection(gw_agent)
+			}
 		} else {
 			fmt.Println("Error lisenting port was:", lisenting_port)
 			response.WriteHeader(400)
@@ -157,6 +199,7 @@ func (self *JD) parseFormAsMap(request *http.Request) (map[string]string, error)
 }
 
 func (self *JD) run() {
+	self.router.RegisterRoute(patriot_router.NewRoute(`/GW-all`, false), self.handleAllGWs)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, false), self.handleGW)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, false), self.handleXZ)
 
