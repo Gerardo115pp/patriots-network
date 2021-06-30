@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-const genesis_hash = "0000000000000000000000000000000000000000000"
+const GENESIS_HASH = "0000000000000000000000000000000000000000000"
 
 type Blockchain struct {
 	blocks *List
@@ -23,10 +23,41 @@ func (self *Blockchain) AddBlock(block *Block) error {
 	return err
 }
 
+func (self *Blockchain) Equals(other *Blockchain) bool {
+	var self_footprint uint64 = ShaAsInt64(self.blocks.Json())
+	var other_footprint uint64 = ShaAsInt64(other.blocks.Json())
+	return self_footprint == other_footprint
+}
+
+func (self *Blockchain) FromBytes(blockchain_bytes []byte) (err error) {
+
+	var blocks_slice []Block
+	err = json.Unmarshal(blockchain_bytes, &blocks_slice)
+	if err != nil {
+		return err
+	}
+
+	for h := range blocks_slice {
+		self.blocks.Append(&(blocks_slice[(len(blocks_slice)-1)-h])) // loads the slice in reverse
+	}
+	_, err = self.ValidateBlockchain()
+	return err
+}
+
+func (self *Blockchain) DataToJson() []byte {
+	var data_fields []string
+	data_fields = self.blocks.Map(func(ln *ListNode) string { return string(ln.NodeContent.(*Block).Data) })
+	json_bytes, err := json.Marshal(data_fields)
+	if err != nil {
+		LogFatal(err)
+	}
+	return json_bytes
+}
+
 func (self *Blockchain) Genesis(data []byte) *Block {
 	var genesis_block *Block
 	if self.blocks == nil || self.blocks.length == 0 {
-		genesis_block = CreateBlock(data, genesis_hash, 0)
+		genesis_block = CreateBlock(data, GENESIS_HASH, 0)
 	}
 	return genesis_block
 }
@@ -46,17 +77,7 @@ func (self *Blockchain) Load(filename string) error {
 		return err
 	}
 
-	var blocks_slice []Block
-	err = json.Unmarshal(filedata, &blocks_slice)
-	if err != nil {
-		return err
-	}
-
-	for h := range blocks_slice {
-		self.blocks.Append(&(blocks_slice[(len(blocks_slice)-1)-h])) // loads the slice in reverse
-	}
-	_, err = self.ValidateBlockchain()
-	return err
+	return self.FromBytes(filedata)
 }
 
 func (self *Blockchain) NewBlock(data []byte) *Block {
@@ -70,8 +91,12 @@ func (self *Blockchain) Save(filename string) {
 	ioutil.WriteFile(fmt.Sprintf("%s.json", filename), []byte(json_data), 0604)
 }
 
+func (self *Blockchain) ToBytes() []byte {
+	return []byte(self.blocks.Json())
+}
+
 func (self *Blockchain) ValidateBlockchain() (bool, error) {
-	var previous_hash string = genesis_hash
+	var previous_hash string = GENESIS_HASH
 	for _, block := range self.blocks.Slice() {
 		_, err := block.(*Block).verifyChecksum()
 		if err != nil {
@@ -87,6 +112,10 @@ func (self *Blockchain) ValidateBlockchain() (bool, error) {
 
 func (self *Blockchain) List() *List {
 	return self.blocks
+}
+
+func (self *Blockchain) Length() int {
+	return self.blocks.length
 }
 
 func CreateBlockchain() *Blockchain {

@@ -15,6 +15,6 @@
 # vendor/
 /**/node_modules
 /**/peers.json
-/**/operational_data
-Services/EP/operational_data/messages.json
-Services/EP/operational_data/users.json
+/**/operational_data/*
+TODOS.txt
+Services/GW/blockchain*
