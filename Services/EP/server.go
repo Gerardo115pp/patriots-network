@@ -188,15 +188,22 @@ func (self *Server) getUserName(response http.ResponseWriter, request *http.Requ
 func (self *Server) loadState() {
 	var users_state_file string = path.Join(SERVER_DATA, "users.json")
 	var messages_state_file string = path.Join(SERVER_DATA, "messages.json")
-	if self.pathExists(users_state_file) && self.pathExists(messages_state_file) {
-		var users_state, messages_state []byte
-		users_state, err := ioutil.ReadFile(users_state_file)
-		panicIfErr(err)
-		panicIfErr(json.Unmarshal(users_state, &(self.users)))
+	var users_state, messages_state []byte
+	var err error
 
+	if self.pathExists(messages_state_file) {
+		// this needs to change, it most attempt to load from GW node first
 		messages_state, err = ioutil.ReadFile(messages_state_file)
 		panicIfErr(err)
 		panicIfErr(json.Unmarshal(messages_state, &(self.messages)))
+
+	}
+
+	// loading users
+	if self.pathExists(users_state_file) {
+		users_state, err = ioutil.ReadFile(users_state_file)
+		panicIfErr(err)
+		panicIfErr(json.Unmarshal(users_state, &(self.users)))
 
 		for h := range self.users {
 			self.users[h].chat = self
