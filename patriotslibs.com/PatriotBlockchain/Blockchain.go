@@ -4,22 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
 )
 
 const GENESIS_HASH = "0000000000000000000000000000000000000000000"
 
 type Blockchain struct {
 	blocks *List
+	head   *Block
 }
 
 func (self *Blockchain) AddBlock(block *Block) error {
-	if !self.blocks.IsEmpty() && block.Previous != self.blocks.root.NodeContent.(*Block).Hash {
+	if !self.blocks.IsEmpty() && block.Previous != self.head.Hash {
 		return fmt.Errorf("block previous hash doesnt match blockchain head hash")
 	}
 	ok, err := block.verifyChecksum()
 	if ok {
-		self.blocks.Push(block)
+		self.blocks.Append(block)
 	}
+	self.head = block
 	return err
 }
 
@@ -37,16 +40,24 @@ func (self *Blockchain) FromBytes(blockchain_bytes []byte) (err error) {
 		return err
 	}
 
+	sort.Slice(blocks_slice, func(i, j int) bool {
+		return blocks_slice[i].Number < blocks_slice[j].Number
+	})
+
 	for h := range blocks_slice {
-		self.blocks.Append(&(blocks_slice[(len(blocks_slice)-1)-h])) // loads the slice in reverse
+		self.AddBlock(&(blocks_slice[h]))
 	}
+
 	_, err = self.ValidateBlockchain()
 	return err
 }
 
 func (self *Blockchain) DataToJson() []byte {
-	var data_fields []string
-	data_fields = self.blocks.Map(func(ln *ListNode) string { return string(ln.NodeContent.(*Block).Data) })
+	var data_fields []string = make([]string, 0)
+	self.blocks.Map(func(ln *ListNode) string {
+		data_fields = append(data_fields, ln.NodeContent.(*Block).Data...)
+		return ""
+	}) // appends all the transactions of each block to the data_fields
 	json_bytes, err := json.Marshal(data_fields)
 	if err != nil {
 		LogFatal(err)
@@ -54,7 +65,7 @@ func (self *Blockchain) DataToJson() []byte {
 	return json_bytes
 }
 
-func (self *Blockchain) Genesis(data []byte) *Block {
+func (self *Blockchain) Genesis(data []string) *Block {
 	var genesis_block *Block
 	if self.blocks == nil || self.blocks.length == 0 {
 		genesis_block = CreateBlock(data, GENESIS_HASH, 0)
@@ -63,11 +74,11 @@ func (self *Blockchain) Genesis(data []byte) *Block {
 }
 
 func (self *Blockchain) Head() Block {
-	return *(self.blocks.root.NodeContent.(*Block))
+	return *(self.head)
 }
 
 func (self *Blockchain) HeadHash() string {
-	return self.blocks.root.NodeContent.(*Block).Hash
+	return self.Head().Hash
 }
 
 func (self *Blockchain) Load(filename string) error {
@@ -80,7 +91,7 @@ func (self *Blockchain) Load(filename string) error {
 	return self.FromBytes(filedata)
 }
 
-func (self *Blockchain) NewBlock(data []byte) *Block {
+func (self *Blockchain) NewBlock(data []string) *Block {
 	var previous_hash string = self.blocks.root.NodeContent.(*Block).Hash
 	var block_num uint = uint(self.blocks.length)
 	return CreateBlock(data, previous_hash, block_num)

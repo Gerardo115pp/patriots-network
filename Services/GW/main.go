@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -123,7 +122,7 @@ func (self *GWnode) broadcastTransactionToPeers(transaction []byte) {
 }
 
 func (self *GWnode) clearTransactions() {
-	fmt.Print("Clearing", len(self.transactions), "transactions:")
+	fmt.Print("Clearing ", len(self.transactions), " transactions:")
 	self.transactions = make([]string, 0)
 	fmt.Println(" Done")
 }
@@ -197,7 +196,7 @@ func (self *GWnode) loadBlockchain() {
 	}
 
 	if err != nil {
-		fmt.Println("Unable to get valid blockchain copy")
+		fmt.Println("Unable to get valid blockchain copy:", err.Error())
 		os.Exit(0)
 	}
 	fmt.Println("Blocks loaded:", self.blockchain.Length())
@@ -257,8 +256,7 @@ func (self *GWnode) requestBlockMining() bool {
 		previous_hash = self.blockchain.HeadHash()
 	}
 
-	encoded_transactions := base64.RawStdEncoding.EncodeToString(transactions_data)
-	form_data := fmt.Sprintf("{\"transactions\": \"%s\", \"block_num\": %d, \"previous\": \"%s\" }", encoded_transactions, self.blockchain.Length(), previous_hash)
+	form_data := fmt.Sprintf("{\"transactions\": %s, \"block_num\": %d, \"previous\": \"%s\" }", string(transactions_data), self.blockchain.Length(), previous_hash)
 	request_body = bytes.NewBufferString(form_data)
 
 	request, _ = http.NewRequest("PUT", fmt.Sprintf("http://%s/XZ", JD_address), request_body)
@@ -395,7 +393,7 @@ func (self *GWnode) syncTransactions() {
 			fmt.Printf(", %s", peer.String())
 		}
 	}
-	fmt.Println("\n Done syncing")
+	fmt.Println("\nDone syncing")
 
 	self.clearTransactions()
 }

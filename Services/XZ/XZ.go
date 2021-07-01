@@ -15,9 +15,9 @@ import (
 const JS_ADDRESS = "192.168.1.79:4000"
 
 type BlockData struct {
-	Transactions string `json:"transactions"`
-	BlockNum     int    `json:"block_num"`
-	Previous     string `json:"previous"`
+	Transactions []string `json:"transactions"`
+	BlockNum     int      `json:"block_num"`
+	Previous     string   `json:"previous"`
 }
 
 type XZ struct {
@@ -82,7 +82,7 @@ func HandleMineBlockRequest(response http.ResponseWriter, request *http.Request)
 }
 
 func MineBlock(block_data *BlockData) *patriot_blockchain.Block {
-	var new_block *patriot_blockchain.Block = patriot_blockchain.CreateBlock([]byte(block_data.Transactions), block_data.Previous, uint(block_data.BlockNum))
+	var new_block *patriot_blockchain.Block = patriot_blockchain.CreateBlock(block_data.Transactions, block_data.Previous, uint(block_data.BlockNum))
 	for !patriot_blockchain.ProofWork(new_block) {
 		new_block.Nonce++
 		new_block.Hash = patriot_blockchain.HashBlock(new_block)

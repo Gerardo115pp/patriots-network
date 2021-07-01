@@ -187,16 +187,12 @@ func (self *Server) getUserName(response http.ResponseWriter, request *http.Requ
 
 func (self *Server) loadState() {
 	var users_state_file string = path.Join(SERVER_DATA, "users.json")
-	var messages_state_file string = path.Join(SERVER_DATA, "messages.json")
-	var users_state, messages_state []byte
+	var users_state []byte
 	var err error
 
-	if self.pathExists(messages_state_file) {
-		// this needs to change, it most attempt to load from GW node first
-		messages_state, err = ioutil.ReadFile(messages_state_file)
-		panicIfErr(err)
-		panicIfErr(json.Unmarshal(messages_state, &(self.messages)))
-
+	err = self.requestMessagesToGW()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// loading users
@@ -210,7 +206,6 @@ func (self *Server) loadState() {
 			self.users[h].Is_logged = false
 			self.users[h].hash = self.getHash(self.users[h].User_name)
 		}
-
 	}
 }
 
@@ -310,6 +305,34 @@ func (self Server) pathExists(p string) bool {
 	return !os.IsNotExist(err)
 }
 
+func (self *Server) requestMessagesToGW() error {
+	response, err := http.Get(fmt.Sprintf("http://%s:%s/blockchain?format=data", self.GWserver.Host, self.GWserver.Port))
+	if err != nil {
+		return err
+	}
+
+	var new_message *Message = new(Message)
+	var messages_bytes []byte
+	var encoded_messages []string
+	messages_bytes, err = ioutil.ReadAll(response.Body)
+
+	err = json.Unmarshal(messages_bytes, &encoded_messages)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Recived %d messages from GW\n", len(encoded_messages))
+	for _, encoded_message := range encoded_messages {
+		if err = json.Unmarshal([]byte(encoded_message), new_message); err != nil {
+			fmt.Println("Error while loading message:", encoded_message, ".")
+			return err
+		}
+		self.messages = append(self.messages, *new_message)
+	}
+
+	return err
+}
+
 func (self *Server) retriveFile(response http.ResponseWriter, request *http.Request) {
 	fmt.Println("\nServing a 'POST' file request from:", request.RemoteAddr)
 
@@ -347,13 +370,9 @@ func (self *Server) saveFile(file multipart.File, file_header *multipart.FileHea
 }
 
 func (self *Server) saveServerStatus() error {
-	var messages_data, users_data []byte
-	messages_data, err := json.Marshal(self.messages)
-	if err != nil {
-		return err
-	}
+	var users_data []byte
 
-	users_data, err = json.Marshal(self.users)
+	users_data, err := json.Marshal(self.users)
 	if err != nil {
 		return err
 	}
@@ -366,9 +385,6 @@ func (self *Server) saveServerStatus() error {
 	}
 
 	if err := ioutil.WriteFile(fmt.Sprintf("%s/users.json", SERVER_DATA), users_data, 0666); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(fmt.Sprintf("%s/messages.json", SERVER_DATA), messages_data, 0666); err != nil {
 		return err
 	}
 	return nil
