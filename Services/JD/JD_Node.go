@@ -316,9 +316,9 @@ func (self *JD) parseFormAsMap(request *http.Request) (map[string]string, error)
 }
 
 func (self *JD) run() {
-	self.router.RegisterRoute(patriot_router.NewRoute(`/GW-all`, false), self.handleAllGWs)
-	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, false), self.handleGW)
-	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, false), self.handleXZ)
+	self.router.RegisterRoute(patriot_router.NewRoute(`/GW-all`, true), self.handleAllGWs)
+	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, true), self.handleGW)
+	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, true), self.handleXZ)
 
 	fmt.Println("Lisinting on port:", self.port)
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", self.host, self.port), self.router); err != nil {
