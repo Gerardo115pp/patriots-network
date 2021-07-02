@@ -1,0 +1,41 @@
+version: "3.7"
+
+services: 
+    jd:
+        image: defalt115/jd-central:v2
+        ports: 
+            - 4000:4000
+        environment: 
+            JD_PORT: 4000
+    gw:
+        image: defalt115/gw-node:v2
+        ports: 
+            - 4005:4020
+        environment: 
+            JD_PORT: 4000
+            JD_HOST: jd
+        depends_on: 
+            - jd
+        # restart: unless-stopped
+    xz:
+        image: defalt115/xz-miner:v1
+        ports: 
+            - 3500:3550
+        environment: 
+            XZPORT: 3500
+            JD_PORT: 4000
+            JD_HOST: jd
+        depends_on: 
+            - jd
+        # restart: unless-stopped
+    ep:
+        image: defalt115/ep-message-manager:v2
+        ports: 
+            - 5000:5000
+        environment: 
+            JD_PORT: 4000
+            JD_HOST: jd
+        depends_on: 
+            - jd
+            - gw
+        # restart: unless-stopped

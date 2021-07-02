@@ -21,7 +21,10 @@ import (
 const DEBUG = false
 const FILES_DIRECTORY = "./users_files"
 const SERVER_DATA = "./operational_data"
-const JD_ADDRESS = "http://192.168.1.79:4000"
+
+var JD_ADDRESS string = ""
+var JD_PORT string = "4000"
+var JD_HOST string = "0.0.0.0"
 
 type GWdata struct {
 	Host string `json:"host"`
@@ -67,7 +70,7 @@ func (self *Server) init(port int) {
 	self.user_leaves = make(chan *User)
 
 	// getting gw data
-	response, err := http.Get(fmt.Sprintf("%s/GW", JD_ADDRESS))
+	response, err := http.Get(fmt.Sprintf("http://%s/GW", JD_ADDRESS))
 	if err != nil {
 		fmt.Println("Warning:", err.Error())
 		return
@@ -456,6 +459,15 @@ func (self *Server) userSendedFile(user_uuid string, file_header *multipart.File
 }
 
 func main() {
+	if param := os.Getenv("JD_PORT"); param != "" {
+		JD_PORT = param
+	}
+
+	if param := os.Getenv("JD_HOST"); param != "" {
+		JD_HOST = param
+	}
+	JD_ADDRESS = fmt.Sprintf("%s:%s", JD_HOST, JD_PORT)
+
 	var server *Server = new(Server)
 	server.init(5000)
 	server.run()

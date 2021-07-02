@@ -12,7 +12,9 @@ import (
 	patriot_router "github.com/Gerardo115pp/PatriotLib/PatriotRouter"
 )
 
-const JS_ADDRESS = "192.168.1.79:4000"
+var JD_ADDRESS string = ""
+var JD_PORT string = "4000"
+var JD_HOST string = "0.0.0.0"
 
 type BlockData struct {
 	Transactions []string `json:"transactions"`
@@ -31,7 +33,7 @@ func (self *XZ) boot() {
 	var request_body *bytes.Buffer = bytes.NewBufferString(fmt.Sprintf("{\"port\": \"%d\"}", self.port))
 	var request *http.Request
 
-	request, _ = http.NewRequest("POST", fmt.Sprintf("http://%s/XZ", JS_ADDRESS), request_body)
+	request, _ = http.NewRequest("POST", fmt.Sprintf("http://%s/XZ", JD_ADDRESS), request_body)
 	request.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(request)
 	if err != nil {
@@ -101,6 +103,15 @@ func CreateXZ(port string) *XZ {
 }
 
 func main() {
+	if param := os.Getenv("JD_PORT"); param != "" {
+		JD_PORT = param
+	}
+
+	if param := os.Getenv("JD_HOST"); param != "" {
+		JD_HOST = param
+	}
+	JD_ADDRESS = fmt.Sprintf("%s:%s", JD_HOST, JD_PORT)
+
 	var param_port string = os.Getenv("XZPORT")
 	if param_port != "" {
 		var xz *XZ = CreateXZ(param_port)

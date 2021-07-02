@@ -16,7 +16,12 @@ import (
 )
 
 const TRANSACTION_LIMIT = 2
-const JD_address = "192.168.1.79:4000"
+
+var JD_address string = "192.168.1.79:4000"
+
+var JD_PORT string = "4000"
+var JD_HOST string = "0.0.0.0"
+
 const PEERS_FILE = "peers.json"
 
 var GW_NODE_NAME string
@@ -405,6 +410,15 @@ func (self *GWnode) syncTransactions() {
 }
 
 func main() {
+	if param := os.Getenv("JD_PORT"); param != "" {
+		JD_PORT = param
+	}
+
+	if param := os.Getenv("JD_HOST"); param != "" {
+		JD_HOST = param
+	}
+	JD_address = fmt.Sprintf("%s:%s", JD_HOST, JD_PORT)
+
 	GW_NODE_NAME = os.Getenv("GW_NAME")
 
 	fmt.Println("GWV:", os.Getenv("GWV"))
