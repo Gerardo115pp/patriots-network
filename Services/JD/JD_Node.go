@@ -11,6 +11,7 @@ import (
 
 	patriot_blockchain "github.com/Gerardo115pp/PatriotLib/PatriotBlockchain"
 	patriot_router "github.com/Gerardo115pp/PatriotLib/PatriotRouter"
+	patriotslibs "github.com/Gerardo115pp/PatriotLib/PatriotUtils/echo"
 )
 
 var DEBUG bool = false
@@ -283,7 +284,7 @@ func (self *JD) handleXZ(response http.ResponseWriter, request *http.Request) {
 		}
 
 		listening_port := form_values["port"]
-		fmt.Println("form_values:", form_values)
+		patriotslibs.EchoDebug(fmt.Sprint("form_values:", form_values))
 
 		if listening_port != "" {
 			var xz_agent *XZagent = new(XZagent)
@@ -291,7 +292,7 @@ func (self *JD) handleXZ(response http.ResponseWriter, request *http.Request) {
 			xz_agent.Lisenting_on = listening_port
 			xz_agent.Host, _, _ = net.SplitHostPort(request.RemoteAddr)
 
-			fmt.Printf("New XZ agent with host '%s:%s' and code %s \n", xz_agent.Host, xz_agent.Lisenting_on, xz_code)
+			patriotslibs.Echo(patriotslibs.OrangeFG, fmt.Sprintf("New XZ agent with host '%s:%s' and code %s \n", xz_agent.Host, xz_agent.Lisenting_on, xz_code))
 
 			self.XZagents[xz_code] = xz_agent
 			response.WriteHeader(200)
@@ -320,7 +321,7 @@ func (self *JD) run() {
 	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, true), self.handleGW)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, true), self.handleXZ)
 
-	fmt.Println("Lisinting on port:", self.port)
+	patriotslibs.Echo(patriotslibs.SkyBlueFG, "Lisinting on port:", self.port)
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", self.host, self.port), self.router); err != nil {
 		fmt.Println("Error:", err.Error())
 	}

@@ -5,14 +5,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type Block struct {
-	Number   uint   `json:"block_num"`
-	Previous string `json:"previous"`
-	Data     []byte `json:"data"`
-	Nonce    uint   `json:"nonce"`
-	Hash     string `json:"hash"`
+	Number   uint     `json:"block_num"`
+	Previous string   `json:"previous"`
+	Data     []string `json:"data"`
+	Nonce    uint     `json:"nonce"`
+	Hash     string   `json:"hash"`
 }
 
 func (self *Block) getId() uint {
@@ -24,7 +25,7 @@ func (self *Block) String() string {
 }
 
 func (self *Block) toString() string {
-	return string(self.Data)
+	return fmt.Sprintf("[%s]", strings.Join(self.Data, ","))
 }
 
 func (self *Block) toJson() []byte {
@@ -54,7 +55,7 @@ func (self *Block) verifyChecksum() (bool, error) {
 	return false, nil
 }
 
-func CreateBlock(data []byte, previous_hash string, block_num uint) *Block {
+func CreateBlock(data []string, previous_hash string, block_num uint) *Block {
 	var new_block *Block = new(Block)
 
 	new_block.Previous = previous_hash
