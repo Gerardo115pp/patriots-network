@@ -106,6 +106,7 @@ func (self *JD) broadcastMiningRequest(block_data []byte) {
 	} else {
 		fmt.Println("No miners avaliable, stacking request.")
 	}
+	self.mining_state = false // aqui el super bug
 }
 
 func (self *JD) castBlockToGws(block_data []byte) {
