@@ -215,6 +215,11 @@ func (self *GWnode) parseFormAsMap(request *http.Request) (map[string]string, er
 	return parsed_form, err
 }
 
+func (self *GWnode) pongStatus(response http.ResponseWriter, request *http.Request) {
+	response.WriteHeader(200)
+	fmt.Fprint(response, "alive")
+}
+
 func (self *GWnode) registerAsPeer() {
 	var use_port int = 4005
 	for {
@@ -365,6 +370,7 @@ func (self *GWnode) run() {
 	self.router.RegisterRoute(patriot_router.NewRoute("/peers", true), self.handlePeers)
 	self.router.RegisterRoute(patriot_router.NewRoute("/blockchain", true), self.handleBlockchainDataReques)
 	self.router.RegisterRoute(patriot_router.NewRoute("/new-block", true), self.addBlock)
+	self.router.RegisterRoute(patriot_router.NewRoute("/status", true), self.pongStatus)
 
 	fmt.Println("Awaiting connections on port:", self.used_port)
 	if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", self.used_port), self.router); err != nil {
