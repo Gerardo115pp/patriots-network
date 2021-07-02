@@ -8,10 +8,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	patriot_blockchain "github.com/Gerardo115pp/PatriotLib/PatriotBlockchain"
 	patriot_router "github.com/Gerardo115pp/PatriotLib/PatriotRouter"
 	patriotslibs "github.com/Gerardo115pp/PatriotLib/PatriotUtils/echo"
+	pcollections "github.com/Gerardo115pp/PatriotLib/PatriotUtils/pcollections"
 )
 
 var DEBUG bool = false
@@ -35,6 +37,7 @@ type JD struct {
 	port         string
 	host         string
 	mining_state bool
+	block_queue  *pcollections.Queue
 }
 
 func (self *JD) awaitXZ(request_data *bytes.Buffer, xz *XZagent, resolution_channel chan []byte) {
@@ -120,6 +123,27 @@ func (self *JD) castBlockToGws(block_data []byte) {
 	}
 }
 
+func (self *JD) clearUnactiveGws() {
+	var active bool
+	var current_len int = len(self.GWagents)
+	for code, gw := range self.GWagents {
+		response, err := http.Get(fmt.Sprintf("http://%s:%s/status", gw.Host, gw.Lisenting_on))
+		active = true
+		if err != nil {
+			patriotslibs.EchoWarn(fmt.Sprintf("GW node was inactive, error message: %s", err.Error()))
+			active = false
+		} else if response.StatusCode != 200 {
+			patriotslibs.EchoWarn(fmt.Sprintf("response from %s:%s was a non ok status: %d(%s)", gw.Host, gw.Lisenting_on, response.StatusCode, response.Status))
+			active = false
+		}
+
+		if !active {
+			delete(self.GWagents, code)
+		}
+	}
+	fmt.Printf("cleaned %d inactive gw agents\n", current_len-len(self.GWagents))
+}
+
 func (self *JD) composeGWagentFromRequest(request *http.Request) *GWagent {
 	var gw_agent *GWagent = new(GWagent)
 	gw_agent.Host, _, _ = net.SplitHostPort(request.RemoteAddr)
@@ -154,6 +178,7 @@ func (self *JD) getXZcode() string {
 }
 
 func (self *JD) getLazyestGW() *GWagent {
+	self.clearUnactiveGws()
 	var lazyiest *GWagent
 	var lowest_connection_count uint = 9999
 	for code, gw := range self.GWagents {
@@ -162,6 +187,7 @@ func (self *JD) getLazyestGW() *GWagent {
 			lowest_connection_count = gw.connections
 		}
 	}
+
 	return lazyiest
 }
 
@@ -207,6 +233,12 @@ func (self *JD) handleGW(response http.ResponseWriter, request *http.Request) {
 		} else {
 			fmt.Println("Getting lazyest GW")
 			var gw_node *GWagent = self.getLazyestGW()
+			if gw_node == nil {
+				response.WriteHeader(404)
+				patriotslibs.EchoWarn("none of the registred GWs were actually active")
+				fmt.Fprint(response, "no gw avaliable")
+				return
+			}
 			var gw_data []byte
 			gw_data, err := json.Marshal(gw_node)
 			if err != nil {
@@ -270,12 +302,13 @@ func (self *JD) handleXZ(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		go self.broadcastMiningRequest(block_data)
+		self.block_queue.Enqueue(block_data)
+		// go self.broadcastMiningRequest(block_data)
 
 		response.WriteHeader(200)
 		response.Write([]byte("ok"))
 	case http.MethodPost:
-		// register a gw agent
+		// register a xz agent
 		form_values, err := self.parseFormAsMap(request)
 		if err != nil {
 			fmt.Println("XZ node registration error due to a bad request")
@@ -303,6 +336,21 @@ func (self *JD) handleXZ(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
+func (self *JD) manageBlockMinigRequests() {
+	for {
+		if self.block_queue.Len() > 0 && !self.mining_state && len(self.XZagents) > 0 {
+			var block_data []byte = self.block_queue.Dequque().([]byte)
+
+			patriotslibs.Echo(patriotslibs.GreenFG, "Starting mining process.")
+
+			self.broadcastMiningRequest(block_data)
+		} else {
+			patriotslibs.EchoDebug("block cant be mined")
+		}
+		time.Sleep(time.Second * 30)
+	}
+}
+
 func (self *JD) parseFormAsMap(request *http.Request) (map[string]string, error) {
 	var parsed_form map[string]string = make(map[string]string)
 	var err error
@@ -317,9 +365,12 @@ func (self *JD) parseFormAsMap(request *http.Request) (map[string]string, error)
 }
 
 func (self *JD) run() {
+
 	self.router.RegisterRoute(patriot_router.NewRoute(`/GW-all`, true), self.handleAllGWs)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/GW`, true), self.handleGW)
 	self.router.RegisterRoute(patriot_router.NewRoute(`/XZ`, true), self.handleXZ)
+
+	go self.manageBlockMinigRequests()
 
 	patriotslibs.Echo(patriotslibs.SkyBlueFG, "Lisinting on port:", self.port)
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", self.host, self.port), self.router); err != nil {
@@ -337,6 +388,7 @@ func createJD() *JD {
 	new_jd_node.GWagents = make(map[string]*GWagent)
 	new_jd_node.XZagents = make(map[string]*XZagent)
 	new_jd_node.router = patriot_router.CreateRouter()
+	new_jd_node.block_queue = new(pcollections.Queue)
 	new_jd_node.mining_state = false
 	return new_jd_node
 }
